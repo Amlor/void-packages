@@ -1,0 +1,23 @@
+# Template file for 'tuwunel'
+pkgname=tuwunel
+version=1.7.0
+revision=1
+#archs="i686 x86_64"
+#build_wrksrc=
+build_style=cargo
+#configure_args=""
+#make_build_args=""
+#conf_files=""
+#make_install_args="--path crates/tuwunel"
+make_dirs="
+	/var/db/tuwunel 0750 tuwunel tuwunel
+	/etc/tuwunel 0750 tuwunel tuwunel"
+hostmakedepends="clang libclang liburing-devel libzstd-devel llvm pkgconf"
+depends="liburing libzstd"
+short_desc="Featureful Matrix homeserver, official successor to conduwuit"
+maintainer="Amlor <void-packages@amlor.at>"
+license="Apache-2.0"
+homepage="https://tuwunel.chat"
+#changelog=""
+distfiles="https://github.com/matrix-construct/tuwunel/archive/refs/tags/v${version}.tar.gz"
+checksum=d7251d65a8b5f0a2db064dc782b3dd2a0bed1cf70e90cfa7a0e0316167eedd0c
