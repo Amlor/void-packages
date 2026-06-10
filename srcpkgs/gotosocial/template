@@ -2,27 +2,28 @@
 pkgname=gotosocial
 version=0.21.2
 revision=1
-#build_wrksrc=
 build_style=go
 go_import_path="code.superseriousbusiness.org/gotosocial"
 go_build_tags="netgo osusergo static_build nomsgpack stdlibjson"
 go_ldflags="-extldflags '-static' -X 'main.Version=${VERSION:-$(git describe --tags --abbrev=0)}'"
 go_package="${go_import_path}/cmd/gotosocial"
-#configure_args=""
-#make_build_args=""
-#make_install_args=""
-#conf_files=""
-#make_dirs="/var/log/dir 0755 root root"
-hostmakedepends=""
-makedepends=""
-depends=""
 short_desc="Golang fediverse server"
 maintainer="amlor <void-packages@amlor.at>"
-# TODO: Copy licenses from web/assets
-license="AGPLv3 CC-BY-3.0 CC-BY-SA-4.0 MIT OFL11"
+license="AGPL-3.0-or-later AND CC-BY-3.0 AND CC-BY-SA-4.0 AND MIT AND OFL-1.1"
 homepage="https://gotosocial.org/"
-#changelog=""
 distfiles="https://codeberg.org/superseriousbusiness/${pkgname}/releases/download/v${version}/gotosocial-${version}-source-code.tar.gz
  https://codeberg.org/superseriousbusiness/${pkgname}/releases/download/v${version}/gotosocial_${version}_web-assets.tar.gz"
 checksum="35ea962e3b6c11f98d18cf553faf7c3b72b9f9453c474dc92204eca34ca9ca28
  98247284d67edd9c5dc4f0b12b11d4680eff9a5fd47943fcf05951fa3292c973"
+system_accounts="_gotosocial"
+conf_files="/etc/gotosocial/config.yaml"
+mutable_files="/var/lib/gotosocial/*"
+make_dirs="/etc/gotosocial 0750 _gotosocial _gotosocial
+ /var/lib/gotosocial 0750 gotosocial gotosocial"
+
+post_install() {
+		vlicense web/assets/LICENSE LICENSE.web-assets
+		vlicense web/assets/Fork-Awesome/LICENSES LICENSES.Fork-Awesome
+		vlicense web/assets/fonts/OFL.txt LICENSE.fonts
+		vlicense LICENSE
+}
