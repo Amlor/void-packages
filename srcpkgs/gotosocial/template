@@ -4,6 +4,10 @@ version=0.21.2
 revision=1
 #build_wrksrc=
 build_style=go
+go_import_path="code.superseriousbusiness.org/gotosocial"
+go_build_tags="netgo osusergo static_build nomsgpack stdlibjson"
+go_ldflags="-extldflags '-static' -X 'main.Version=${VERSION:-$(git describe --tags --abbrev=0)}'"
+go_package="${go_import_path}/cmd/gotosocial"
 #configure_args=""
 #make_build_args=""
 #make_install_args=""
@@ -16,7 +20,6 @@ short_desc="Golang fediverse server"
 maintainer="amlor <void-packages@amlor.at>"
 # TODO: Copy licenses from web/assets
 license="AGPLv3 CC-BY-3.0 CC-BY-SA-4.0 MIT OFL11"
-vlicense=
 homepage="https://gotosocial.org/"
 #changelog=""
 distfiles="https://codeberg.org/superseriousbusiness/${pkgname}/releases/download/v${version}/gotosocial-${version}-source-code.tar.gz
