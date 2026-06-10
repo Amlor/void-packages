@@ -12,12 +12,14 @@ build_style=go
 hostmakedepends=""
 makedepends=""
 depends=""
-short_desc=""
+short_desc="Golang fediverse server"
 maintainer="amlor <void-packages@amlor.at>"
 # TODO: Copy licenses from web/assets
 license="AGPLv3 CC-BY-3.0 CC-BY-SA-4.0 MIT OFL11"
 vlicense=
-homepage=""
+homepage="https://gotosocial.org/"
 #changelog=""
-distfiles=""
-checksum=badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb
+distfiles="https://codeberg.org/superseriousbusiness/${pkgname}/releases/download/v${version}/gotosocial-${version}-source-code.tar.gz
+ https://codeberg.org/superseriousbusiness/${pkgname}/releases/download/v${version}/gotosocial_${version}_web-assets.tar.gz"
+checksum="35ea962e3b6c11f98d18cf553faf7c3b72b9f9453c474dc92204eca34ca9ca28
+ 98247284d67edd9c5dc4f0b12b11d4680eff9a5fd47943fcf05951fa3292c973"
