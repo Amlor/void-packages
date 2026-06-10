@@ -1,0 +1,23 @@
+# Template file for 'gotosocial'
+pkgname=gotosocial
+version=0.21.2
+revision=1
+#build_wrksrc=
+build_style=go
+#configure_args=""
+#make_build_args=""
+#make_install_args=""
+#conf_files=""
+#make_dirs="/var/log/dir 0755 root root"
+hostmakedepends=""
+makedepends=""
+depends=""
+short_desc=""
+maintainer="amlor <void-packages@amlor.at>"
+# TODO: Copy licenses from web/assets
+license="AGPLv3 CC-BY-3.0 CC-BY-SA-4.0 MIT OFL11"
+vlicense=
+homepage=""
+#changelog=""
+distfiles=""
+checksum=badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb
