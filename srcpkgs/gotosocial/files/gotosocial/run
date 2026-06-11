@@ -1,0 +1,3 @@
+#!/bin/sh
+exec 2>&1
+exec gotosocial --config-path /etc/gotosocial/config.yaml server start

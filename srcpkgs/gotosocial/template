@@ -32,4 +32,6 @@ post_install() {
 		vinstall example/config.yaml 0640 etc/gotosocial/ config.yaml.sample
 		vmkdir srv/www/gotosocial
 		vcopy web/* srv/www/gotosocial/
+
+		vsv gotosocial
 }
