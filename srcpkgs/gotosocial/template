@@ -16,7 +16,7 @@ distfiles="https://codeberg.org/superseriousbusiness/${pkgname}/releases/downloa
 checksum="35ea962e3b6c11f98d18cf553faf7c3b72b9f9453c474dc92204eca34ca9ca28
  98247284d67edd9c5dc4f0b12b11d4680eff9a5fd47943fcf05951fa3292c973"
 system_accounts="_gotosocial"
-conf_files="/etc/gotosocial/config.yaml /etc/gotosocial/config.yaml.sample"
+conf_files="/etc/gotosocial/config.yaml.sample"
 mutable_files="/var/lib/gotosocial/*"
 make_dirs="/etc/gotosocial 0750 _gotosocial _gotosocial
  /var/lib/gotosocial 0750 _gotosocial _gotosocial
@@ -27,4 +27,9 @@ post_install() {
 		vlicense web/assets/Fork-Awesome/LICENSES LICENSES.Fork-Awesome
 		vlicense web/assets/fonts/OFL.txt LICENSE.fonts
 		vlicense LICENSE
+
+		vmkdir etc/gotosocial
+		vinstall example/config.yaml 0640 etc/gotosocial/ config.yaml.sample
+		vmkdir srv/www/gotosocial
+		vcopy web/* srv/www/gotosocial/
 }
