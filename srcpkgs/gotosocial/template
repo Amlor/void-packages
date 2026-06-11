@@ -5,7 +5,7 @@ revision=1
 build_style=go
 go_import_path="code.superseriousbusiness.org/gotosocial"
 go_build_tags="netgo osusergo static_build nomsgpack stdlibjson"
-go_ldflags="-extldflags '-static' -X 'main.Version=${VERSION:-$(git describe --tags --abbrev=0)}'"
+go_ldflags="-extldflags '-static' -X 'main.Version=${version}'"
 go_package="${go_import_path}/cmd/gotosocial"
 short_desc="Golang fediverse server"
 maintainer="amlor <void-packages@amlor.at>"
