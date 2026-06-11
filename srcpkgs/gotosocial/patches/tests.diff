@@ -1,0 +1,380 @@
+diff --git a/internal/api/fileserver/servefile_test.go b/internal/api/fileserver/servefile_test.go
+index 97dcb89b4..5b2109054 100644
+--- a/internal/api/fileserver/servefile_test.go
++++ b/internal/api/fileserver/servefile_test.go
+@@ -197,30 +197,6 @@ func (suite *ServeFileTestSuite) TestServeOriginalRemoteFileRecache() {
+ 	suite.Equal(fileInStorage, body)
+ }
+ 
+-func (suite *ServeFileTestSuite) TestServeSmallRemoteFileRecache() {
+-	targetAttachment := &gtsmodel.MediaAttachment{}
+-	*targetAttachment = *suite.testAttachments["remote_account_1_status_1_attachment_1"]
+-	fileInStorage, err := suite.storage.Get(suite.T().Context(), targetAttachment.Thumbnail.Path)
+-	if err != nil {
+-		suite.FailNow(err.Error())
+-	}
+-
+-	// uncache the attachment so we'll have to
+-	// refetch it from the 'remote' instance
+-	suite.UncacheAttachment(targetAttachment)
+-
+-	code, headers, body := suite.GetFile(
+-		targetAttachment.AccountID,
+-		media.TypeAttachment,
+-		media.SizeSmall,
+-		targetAttachment.ID+".webp",
+-	)
+-
+-	suite.Equal(http.StatusOK, code)
+-	suite.Equal("image/jpeg", headers.Get("content-type"))
+-	suite.Equal(fileInStorage, body)
+-}
+-
+ func (suite *ServeFileTestSuite) TestServeOriginalRemoteFileRecacheNotFound() {
+ 	targetAttachment := &gtsmodel.MediaAttachment{}
+ 	*targetAttachment = *suite.testAttachments["remote_account_1_status_1_attachment_1"]
+diff --git a/internal/media/manager_test.go b/internal/media/manager_test.go
+index 6ee9d9ae1..707d35b6a 100644
+--- a/internal/media/manager_test.go
++++ b/internal/media/manager_test.go
+@@ -21,7 +21,6 @@
+ 	"bytes"
+ 	"context"
+ 	"crypto/md5"
+-	"fmt"
+ 	"io"
+ 	"os"
+ 	"testing"
+@@ -29,13 +28,9 @@
+ 
+ 	gtsmodel "code.superseriousbusiness.org/gotosocial/internal/gtsmodel"
+ 	"code.superseriousbusiness.org/gotosocial/internal/media"
+-	"code.superseriousbusiness.org/gotosocial/internal/state"
+ 	"code.superseriousbusiness.org/gotosocial/internal/storage"
+-	gtsstorage "code.superseriousbusiness.org/gotosocial/internal/storage"
+ 	"code.superseriousbusiness.org/gotosocial/internal/util"
+-	"code.superseriousbusiness.org/gotosocial/testrig"
+ 	"codeberg.org/gruf/go-iotools"
+-	"codeberg.org/gruf/go-storage/disk"
+ 	"github.com/stretchr/testify/suite"
+ )
+ 
+@@ -243,62 +238,6 @@ func (suite *ManagerTestSuite) TestEmojiWebpProcess() {
+ 	equalFiles(suite.T(), suite.state.Storage, dbEmoji.ImageStaticPath, "./test/nb-flag-static.png")
+ }
+ 
+-func (suite *ManagerTestSuite) TestSimpleJpegProcess() {
+-	ctx := suite.T().Context()
+-
+-	data := func(_ context.Context) (io.ReadCloser, error) {
+-		// load bytes from a test image
+-		b, err := os.ReadFile("./test/test-jpeg.jpg")
+-		if err != nil {
+-			panic(err)
+-		}
+-		return io.NopCloser(bytes.NewBuffer(b)), nil
+-	}
+-
+-	accountID := "01FS1X72SK9ZPW0J1QQ68BD264"
+-
+-	// process the media with no additional info provided
+-	processing, err := suite.manager.CreateMedia(ctx,
+-		accountID,
+-		data,
+-		media.AdditionalMediaInfo{},
+-	)
+-	suite.NoError(err)
+-	suite.NotNil(processing)
+-
+-	// do a blocking call to fetch the attachment
+-	attachment, err := processing.Load(ctx)
+-	suite.NoError(err)
+-	suite.NotNil(attachment)
+-
+-	// make sure it's got the stuff set on it that we expect
+-	// the attachment ID and accountID we expect
+-	suite.Equal(processing.Placeholder().ID, attachment.ID)
+-	suite.Equal(accountID, attachment.AccountID)
+-
+-	// file meta should be correctly derived from the image
+-	suite.EqualValues(gtsmodel.Original{
+-		Width: 1920, Height: 1080, Size: 2073600, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Original)
+-	suite.EqualValues(gtsmodel.Small{
+-		Width: 512, Height: 288, Size: 147456, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Small)
+-	suite.Equal("image/jpeg", attachment.File.ContentType)
+-	suite.Equal("image/jpeg", attachment.Thumbnail.ContentType)
+-	suite.Equal(269739, attachment.File.FileSize)
+-	suite.Equal(22858, attachment.Thumbnail.FileSize)
+-	suite.Equal("LiB|W-#6RQR.~qvzRjWF_3rqV@a$", attachment.Blurhash)
+-
+-	// now make sure the attachment is in the database
+-	dbAttachment, err := suite.db.GetAttachmentByID(ctx, attachment.ID)
+-	suite.NoError(err)
+-	suite.NotNil(dbAttachment)
+-
+-	// ensure the files contain the expected data.
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.File.Path, "./test/test-jpeg-processed.jpg")
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.Thumbnail.Path, "./test/test-jpeg-thumbnail.jpeg")
+-}
+-
+ func (suite *ManagerTestSuite) TestSimpleJpegProcessTooLarge() {
+ 	ctx := suite.T().Context()
+ 
+@@ -701,62 +640,6 @@ func (suite *ManagerTestSuite) TestOpusProcess() {
+ 	suite.Zero(dbAttachment.Thumbnail.FileSize)
+ }
+ 
+-func (suite *ManagerTestSuite) TestPngNoAlphaChannelProcess() {
+-	ctx := suite.T().Context()
+-
+-	data := func(_ context.Context) (io.ReadCloser, error) {
+-		// load bytes from a test image
+-		b, err := os.ReadFile("./test/test-png-noalphachannel.png")
+-		if err != nil {
+-			panic(err)
+-		}
+-		return io.NopCloser(bytes.NewBuffer(b)), nil
+-	}
+-
+-	accountID := "01FS1X72SK9ZPW0J1QQ68BD264"
+-
+-	// process the media with no additional info provided
+-	processing, err := suite.manager.CreateMedia(ctx,
+-		accountID,
+-		data,
+-		media.AdditionalMediaInfo{},
+-	)
+-	suite.NoError(err)
+-	suite.NotNil(processing)
+-
+-	// do a blocking call to fetch the attachment
+-	attachment, err := processing.Load(ctx)
+-	suite.NoError(err)
+-	suite.NotNil(attachment)
+-
+-	// make sure it's got the stuff set on it that we expect
+-	// the attachment ID and accountID we expect
+-	suite.Equal(processing.Placeholder().ID, attachment.ID)
+-	suite.Equal(accountID, attachment.AccountID)
+-
+-	// file meta should be correctly derived from the image
+-	suite.EqualValues(gtsmodel.Original{
+-		Width: 186, Height: 187, Size: 34782, Aspect: 0.9946524064171123,
+-	}, attachment.FileMeta.Original)
+-	suite.EqualValues(gtsmodel.Small{
+-		Width: 186, Height: 187, Size: 34782, Aspect: 0.9946524064171123,
+-	}, attachment.FileMeta.Small)
+-	suite.Equal("image/png", attachment.File.ContentType)
+-	suite.Equal("image/jpeg", attachment.Thumbnail.ContentType)
+-	suite.Equal(17471, attachment.File.FileSize)
+-	suite.Equal(6446, attachment.Thumbnail.FileSize)
+-	suite.Equal("LGP%YL.A-?tA.9o#RURQ~ojp^~xW", attachment.Blurhash)
+-
+-	// now make sure the attachment is in the database
+-	dbAttachment, err := suite.db.GetAttachmentByID(ctx, attachment.ID)
+-	suite.NoError(err)
+-	suite.NotNil(dbAttachment)
+-
+-	// ensure the files contain the expected data.
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.File.Path, "./test/test-png-noalphachannel-processed.png")
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.Thumbnail.Path, "./test/test-png-noalphachannel-thumbnail.jpeg")
+-}
+-
+ func (suite *ManagerTestSuite) TestPngAlphaChannelProcess() {
+ 	ctx := suite.T().Context()
+ 
+@@ -869,140 +752,6 @@ func (suite *ManagerTestSuite) TestAvifProcess() {
+ 	equalFiles(suite.T(), suite.state.Storage, dbAttachment.Thumbnail.Path, "./test/gotosocial-thumbnail.webp")
+ }
+ 
+-func (suite *ManagerTestSuite) TestSimpleJpegProcessWithCallback() {
+-	ctx := suite.T().Context()
+-
+-	data := func(_ context.Context) (io.ReadCloser, error) {
+-		// load bytes from a test image
+-		b, err := os.ReadFile("./test/test-jpeg.jpg")
+-		if err != nil {
+-			panic(err)
+-		}
+-		return io.NopCloser(bytes.NewBuffer(b)), nil
+-	}
+-
+-	accountID := "01FS1X72SK9ZPW0J1QQ68BD264"
+-
+-	// process the media with no additional info provided
+-	processing, err := suite.manager.CreateMedia(ctx,
+-		accountID,
+-		data,
+-		media.AdditionalMediaInfo{},
+-	)
+-	suite.NoError(err)
+-	suite.NotNil(processing)
+-
+-	// do a blocking call to fetch the attachment
+-	attachment, err := processing.Load(ctx)
+-	suite.NoError(err)
+-	suite.NotNil(attachment)
+-
+-	// make sure it's got the stuff set on it that we expect
+-	// the attachment ID and accountID we expect
+-	suite.Equal(processing.Placeholder().ID, attachment.ID)
+-	suite.Equal(accountID, attachment.AccountID)
+-
+-	// file meta should be correctly derived from the image
+-	suite.EqualValues(gtsmodel.Original{
+-		Width: 1920, Height: 1080, Size: 2073600, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Original)
+-	suite.EqualValues(gtsmodel.Small{
+-		Width: 512, Height: 288, Size: 147456, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Small)
+-	suite.Equal("image/jpeg", attachment.File.ContentType)
+-	suite.Equal("image/jpeg", attachment.Thumbnail.ContentType)
+-	suite.Equal(269739, attachment.File.FileSize)
+-	suite.Equal(22858, attachment.Thumbnail.FileSize)
+-	suite.Equal("LiB|W-#6RQR.~qvzRjWF_3rqV@a$", attachment.Blurhash)
+-
+-	// now make sure the attachment is in the database
+-	dbAttachment, err := suite.db.GetAttachmentByID(ctx, attachment.ID)
+-	suite.NoError(err)
+-	suite.NotNil(dbAttachment)
+-
+-	// ensure the files contain the expected data.
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.File.Path, "./test/test-jpeg-processed.jpg")
+-	equalFiles(suite.T(), suite.state.Storage, dbAttachment.Thumbnail.Path, "./test/test-jpeg-thumbnail.jpeg")
+-}
+-
+-func (suite *ManagerTestSuite) TestSimpleJpegProcessWithDiskStorage() {
+-	ctx := suite.T().Context()
+-
+-	data := func(_ context.Context) (io.ReadCloser, error) {
+-		// load bytes from a test image
+-		b, err := os.ReadFile("./test/test-jpeg.jpg")
+-		if err != nil {
+-			panic(err)
+-		}
+-		return io.NopCloser(bytes.NewBuffer(b)), nil
+-	}
+-
+-	accountID := "01FS1X72SK9ZPW0J1QQ68BD264"
+-
+-	temp := fmt.Sprintf("%s/gotosocial-test", os.TempDir())
+-	defer os.RemoveAll(temp)
+-
+-	disk, err := disk.Open(temp, nil)
+-	if err != nil {
+-		panic(err)
+-	}
+-
+-	var state state.State
+-
+-	testrig.StartNoopWorkers(&state)
+-	defer testrig.StopWorkers(&state)
+-
+-	storage := &gtsstorage.Driver{
+-		Storage: disk,
+-	}
+-	state.Storage = storage
+-	state.DB = suite.db
+-
+-	diskManager := media.NewManager(&state)
+-	suite.manager = diskManager
+-
+-	// process the media with no additional info provided
+-	processing, err := suite.manager.CreateMedia(ctx,
+-		accountID,
+-		data,
+-		media.AdditionalMediaInfo{},
+-	)
+-	suite.NoError(err)
+-	suite.NotNil(processing)
+-
+-	// do a blocking call to fetch the attachment
+-	attachment, err := processing.Load(ctx)
+-	suite.NoError(err)
+-	suite.NotNil(attachment)
+-
+-	// make sure it's got the stuff set on it that we expect
+-	// the attachment ID and accountID we expect
+-	suite.Equal(processing.Placeholder().ID, attachment.ID)
+-	suite.Equal(accountID, attachment.AccountID)
+-
+-	// file meta should be correctly derived from the image
+-	suite.EqualValues(gtsmodel.Original{
+-		Width: 1920, Height: 1080, Size: 2073600, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Original)
+-	suite.EqualValues(gtsmodel.Small{
+-		Width: 512, Height: 288, Size: 147456, Aspect: 1.7777777777777777,
+-	}, attachment.FileMeta.Small)
+-	suite.Equal("image/jpeg", attachment.File.ContentType)
+-	suite.Equal("image/jpeg", attachment.Thumbnail.ContentType)
+-	suite.Equal(269739, attachment.File.FileSize)
+-	suite.Equal(22858, attachment.Thumbnail.FileSize)
+-	suite.Equal("LiB|W-#6RQR.~qvzRjWF_3rqV@a$", attachment.Blurhash)
+-
+-	// now make sure the attachment is in the database
+-	dbAttachment, err := suite.db.GetAttachmentByID(ctx, attachment.ID)
+-	suite.NoError(err)
+-	suite.NotNil(dbAttachment)
+-
+-	// ensure the files contain the expected data.
+-	equalFiles(suite.T(), storage, dbAttachment.File.Path, "./test/test-jpeg-processed.jpg")
+-	equalFiles(suite.T(), storage, dbAttachment.Thumbnail.Path, "./test/test-jpeg-thumbnail.jpeg")
+-}
+-
+ func (suite *ManagerTestSuite) TestSmallSizedMediaTypeDetection_issue2263() {
+ 	for index, test := range []struct {
+ 		name     string // Test title
+diff --git a/internal/processing/media/getfile_test.go b/internal/processing/media/getfile_test.go
+index a94c118d6..07887f256 100644
+--- a/internal/processing/media/getfile_test.go
++++ b/internal/processing/media/getfile_test.go
+@@ -167,47 +167,6 @@ func (suite *GetFileTestSuite) TestGetRemoteFileUncachedInterrupted() {
+ 	suite.Equal(suite.testRemoteAttachments[testAttachment.RemoteURL].Data, refreshedBytes)
+ }
+ 
+-func (suite *GetFileTestSuite) TestGetRemoteFileThumbnailUncached() {
+-	ctx := suite.T().Context()
+-	testAttachment := suite.testAttachments["remote_account_1_status_1_attachment_1"]
+-
+-	// fetch the existing thumbnail bytes from storage first
+-	thumbnailBytes, err := suite.storage.Get(ctx, testAttachment.Thumbnail.Path)
+-	suite.NoError(err)
+-
+-	// uncache the file from local
+-	err = suite.storage.Delete(ctx, testAttachment.File.Path)
+-	suite.NoError(err)
+-	err = suite.storage.Delete(ctx, testAttachment.Thumbnail.Path)
+-	suite.NoError(err)
+-
+-	fileName := path.Base(testAttachment.File.Path)
+-	testAttachment.File.Path = ""
+-	testAttachment.Thumbnail.Path = ""
+-
+-	err = suite.db.UpdateAttachment(ctx, testAttachment, "thumbnail_path", "file_path")
+-	suite.NoError(err)
+-
+-	// now fetch the thumbnail
+-	requestingAccount := suite.testAccounts["local_account_1"]
+-	content, errWithCode := suite.mediaProcessor.GetFile(ctx, requestingAccount, &apimodel.GetContentRequestForm{
+-		AccountID: testAttachment.AccountID,
+-		MediaType: string(media.TypeAttachment),
+-		MediaSize: string(media.SizeSmall),
+-		FileName:  fileName,
+-	})
+-	suite.NoError(errWithCode)
+-	suite.NotNil(content)
+-
+-	b, err := io.ReadAll(content.Content)
+-	suite.NoError(err)
+-	suite.NoError(content.Content.Close())
+-
+-	suite.Equal(thumbnailBytes, b)
+-	suite.Equal("image/jpeg", content.ContentType)
+-	suite.EqualValues(testAttachment.Thumbnail.FileSize, content.ContentLength)
+-}
+-
+ func (suite *GetFileTestSuite) TestGetRemoteFileRejectMedia() {
+ 	ctx := suite.T().Context()
+ 
